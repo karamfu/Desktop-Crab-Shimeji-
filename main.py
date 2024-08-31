@@ -3,47 +3,45 @@ import random
 from PIL import Image, ImageTk, ImageSequence
 from pathlib import Path
 
-# Set up window
+# Set up window (Technically, the application is a window but I'm hiding all aspects that would reveal that)
 window = tk.Tk()
-window.overrideredirect(True)  # Remove window decorations
+window.overrideredirect(True)
 window.attributes('-topmost', True)
-window.attributes('-transparentcolor', 'black')  # Set black as the transparent color
+window.attributes('-transparentcolor', 'black')
 
-# Get screen width and height
 screen_width = window.winfo_screenwidth()
 screen_height = window.winfo_screenheight()
 
-# Calculate the center position
-initial_x = screen_width // 2 - 50  # Centered on the X-axis
-initial_y = screen_height // 2 - 50  # Centered on the Y-axis
+initial_x = screen_width // 2 - 50
+initial_y = screen_height // 2 - 50
 
-# Set up initial variables
+# Set up our initial variables
 x = initial_x
 y = initial_y
 target_x = x
 target_y = y
 cycle = 0
-last_animation_frames = None  # Track the last animation frames
-moving = False  # Track if the pet is moving
-playing_heart = False  # Track if the heart animation is playing
+last_animation_frames = None
+moving = False
+playing_heart = False
 
-# Define the path to the gifs
+# The path to where all the gifs are stored
 impath = Path(__file__).parent / 'gifs'
 
-# Randomize pet size within 3% range
+# This will randomize our pet's size , it can either spawn small or large
 random_scale_factor = random.uniform(0.7, 1.30)
 random_width = int(100 * random_scale_factor)
 random_height = int(100 * random_scale_factor)
 
-# Set window geometry to the center position
+
 window.geometry(f'{random_width}x{random_height}+{initial_x}+{initial_y}')
 
-# Load gifs and create PhotoImage objects for each frame
+# Load gifs
 def load_gif_frames(gif_path):
     gif = Image.open(gif_path)
     frames = []
     for frame in ImageSequence.Iterator(gif):
-        frame = frame.convert('RGBA')  # Ensure the image has an alpha channel
+        frame = frame.convert('RGBA')
         frames.append(ImageTk.PhotoImage(frame.resize((random_width, random_height), Image.Resampling.NEAREST)))
     return frames
 
@@ -55,7 +53,7 @@ walk_positive_gif_frames = load_gif_frames(impath / 'walking_positive0.gif')
 walk_negative_gif_frames = load_gif_frames(impath / 'walking_negative0.gif')
 heart_gif_frames = load_gif_frames(impath / 'heart.gif')
 
-# Define update function for animation
+# Define update function for animations
 def update_animation(frames, callback=None):
     global cycle
 
@@ -63,12 +61,12 @@ def update_animation(frames, callback=None):
     cycle = (cycle + 1) % len(frames)
 
     label.config(image=frame)
-    label.place(x=0, y=0)  # Adjusted the position to be at the top-left of the window
+    label.place(x=0, y=0)
 
     if cycle == 0 and callback:
         # Show the first frame of the idle animation
         label.config(image=frames[0])
-        # Schedule the next animation cycle after a random interval
+        # Random interval till the next animation cycle
         window.after(random.randint(5000, 10000), callback)
     else:
         window.after(100, lambda: update_animation(frames, callback))
@@ -79,7 +77,7 @@ def start_idle_animation():
     cycle = 0
     update_animation(idle_gif_frames, start_idle_animation)
 
-# Function to set new target position for the window
+# Function to give the window a new target position (moving around)
 def set_new_target_position():
     global target_x, target_y
 
@@ -87,11 +85,11 @@ def set_new_target_position():
     target_x += random.randint(-200, 200)
     target_y += random.randint(-200, 200)
 
-    # Ensure the target position stays within the screen boundaries
+    #Making sure the crab stays within the dimensions of the screen
     target_x = max(0, min(window.winfo_screenwidth() - random_width, target_x))
     target_y = max(0, min(window.winfo_screenheight() - random_height, target_y))
 
-    # Schedule the next target position update
+    # Randomly decide when the next time it will move
     window.after(random.randint(5000, 10000), set_new_target_position)
 
 # Function to smoothly move the window to the target position
@@ -102,14 +100,13 @@ def move_window_smoothly():
     dx = target_x - x
     dy = target_y - y
 
-    # Determine the direction of movement
     move_right = dx > 0
     move_left = dx < 0
     move_up = dy < 0
     move_down = dy > 0
 
     # Move a fraction of the distance towards the target position
-    step_size = 10  # Adjust the step size for smoother or faster movement
+    step_size = 10
     if abs(dx) > step_size or abs(dy) > step_size:
         if abs(dx) > step_size:
             x += step_size if dx > 0 else -step_size
@@ -126,19 +123,17 @@ def move_window_smoothly():
         # Cancel heart animation if moving
         if playing_heart:
             playing_heart = False
-            cycle = 0  # Reset cycle for the next animation
+            cycle = 0
             update_animation(last_animation_frames if last_animation_frames else idle_gif_frames)
 
-        # Play walking animation based on direction
+        # Play walking animation based on direction (if moving left look left)
         if move_right:
             last_animation_frames = walk_positive_gif_frames
         elif move_left:
             last_animation_frames = walk_negative_gif_frames
         elif move_up or move_down:
-            # Continue with the last animation if moving up or down
             pass
 
-        # Use last_animation_frames if it exists, otherwise default to idle
         if last_animation_frames:
             frame = last_animation_frames[cycle % len(last_animation_frames)]
             cycle += 1
@@ -146,10 +141,8 @@ def move_window_smoothly():
             frame = idle_gif_frames[0]
 
         label.config(image=frame)
-        label.place(x=0, y=0)  # Adjusted the position to be at the top-left of the window
-
+        label.place(x=0, y=0)
         moving = True
-        # Continue moving the window
         window.after(50, move_window_smoothly)
     else:
         moving = False
@@ -158,7 +151,7 @@ def move_window_smoothly():
         # Schedule the next movement
         window.after(random.randint(500, 2000), move_window_smoothly)
 
-# Function to start dragging
+#Function to start dragging
 def start_drag(event):
     window._drag_start_x = event.x
     window._drag_start_y = event.y
@@ -170,7 +163,7 @@ def do_drag(event):
     y = window.winfo_y() + (event.y - window._drag_start_y)
     window.geometry(f'{random_width}x{random_height}+{x}+{y}')
 
-# Function to play the heart animation
+#Function to play the heart animation thing
 def play_heart_animation(event=None):
     global cycle, playing_heart
     if not moving and not playing_heart:
@@ -178,21 +171,20 @@ def play_heart_animation(event=None):
         cycle = 0  # Reset the cycle when starting a new animation
         update_animation(heart_gif_frames, end_heart_animation)
 
-# Function to end the heart animation and resume idle
+# Function to STOP the heart animation and play idle
 def end_heart_animation():
     global playing_heart
     playing_heart = False
     start_idle_animation()
 
-# Function to close the program
+# Close the program with a command
 def close_program(event):
     window.destroy()
 
 # Create label
-label = tk.Label(window, bd=0, bg='black')  # Ensure the background matches the transparent color
+label = tk.Label(window, bd=0, bg='black')  # Background matches transparent color (black)
 label.place(x=0, y=0)
 
-# Bind mouse events to dragging functions
 label.bind('<Button-1>', start_drag)
 label.bind('<B1-Motion>', do_drag)
 
@@ -202,12 +194,12 @@ window.bind_all('h', play_heart_animation)
 # Bind Ctrl + Alt + C to close the program
 window.bind_all('<Control-Alt-c>', close_program)
 
-# Start the idle animation with random intervals
+
+
 start_idle_animation()
 
-# Set the initial target position and start moving smoothly
 set_new_target_position()
 move_window_smoothly()
 
-# Run the tkinter main loop
+# Run the  main loop
 window.mainloop()
